@@ -1,0 +1,46 @@
+name: Validate and deploy public preview
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: public-pages
+  cancel-in-progress: true
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s index.html
+          test -s kit/cashflow-template-he.csv
+          test -s kit/cashflow-example-synthetic-he.csv
+          test -s kit/README-he.md
+          grep -q 'הרכישה תיפתח בקרוב' index.html
+          grep -q 'button disabled' index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("index.html").read_text(encoding="utf-8")
+          assert 'dir="rtl"' in p
+          assert "https://github.com/AlmazitMe/first-dollar-public/issues/new" in p
+          assert "https://github.com/AlmazitMe/super-manager-research" not in p
+          for name in ("cashflow-template-he.csv","cashflow-example-synthetic-he.csv"):
+              assert f"./kit/{name}" in p
+          print("Public preview checks passed")
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
