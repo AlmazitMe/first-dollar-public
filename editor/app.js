@@ -534,7 +534,10 @@
    bind('verifyDb',verifyDb);bind('requestPersist',requestPersistence);
    bind('clear',async()=>{
      if(!confirm('למחוק את עותק הכספת המוצפן שמאוחסן בדפדפן זה? הפעולה לא מוחקת גיבויים שהורדת.'))return;
-     await idbDelete();lock();tell('העותק המקומי המוצפן נמחק מהאחסון של הדפדפן.');
+     await lock();
+     await idbDelete();
+     await idbDelete('db-canary');
+     tell('העותק המקומי המוצפן ורשומת הבדיקה נמחקו מהאחסון של הדפדפן.');
    });
    bind('exportMarkdown',()=>{if(mode==='full')state.messages=decodeText($('fullEditor').value);exportMarkdown()});
    bind('exportJSON',()=>{if(mode==='full')state.messages=decodeText($('fullEditor').value);exportJSON()});
