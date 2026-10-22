@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; object-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; object-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <title>Lambadina | מעבדת שיחה חופשית</title>
+<meta name="theme-color" content="#0b1020">
 <link rel="stylesheet" href="style.css">
 <script defer src="app.js"></script>
 </head>
@@ -40,6 +41,15 @@
    <div class="field"><label for="replace">החלפה גורפת</label><input id="replace" placeholder="טקסט חדש"><button class="btn full" id="replaceAll">החלף בכל התמליל</button></div>
    <div class="field"><label for="snapshots">גרסאות</label><select id="snapshots"><option>אין גרסאות</option></select><button class="btn full" id="restore">שחזר גרסה נבחרת</button></div>
    <hr>
+   <h2>מסד הנתונים בטלפון</h2>
+   <div class="stat"><span>מסד נתונים מוצפן</span><strong id="dbStatus">ממתין לבדיקה</strong></div>
+   <div class="stat"><span>שמירה עמידה</span><strong id="storageStatus">לא אומתה</strong></div>
+   <div class="stat"><span>נפח אחסון</span><strong id="storageUsage">לא נמדד</strong></div>
+   <div class="stat"><span>שמירה אחרונה</span><strong id="lastSave">אין עדיין</strong></div>
+   <button class="btn full" id="verifyDb">בדוק כתיבה, קריאה ופתיחה מחדש</button>
+   <button class="btn full" id="requestPersist">בקש שמירה עמידה במכשיר</button>
+   <p class="muted">הנתונים מוצפנים בדפדפן הזה בלבד. מחיקת נתוני האתר או הסרת הדפדפן עלולות למחוק את המסד; ייצא גיבוי מוצפן באופן קבוע.</p>
+   <hr>
    <h2>כספת מקומית</h2>
    <p class="muted">הסיסמה אינה נשלחת או נשמרת. סיסמה שאבדה לא ניתנת לשחזור מתוך הקובץ המוצפן.</p>
    <div class="field"><label for="passphrase">סיסמת הצפנה (לפחות 12 תווים)</label><input id="passphrase" type="password" autocomplete="off" placeholder="בחר סיסמה ייחודית"></div>
@@ -65,6 +75,7 @@
  </div>
  <textarea id="contextBox" class="hidden" readonly placeholder="ההקשר שהוכן יופיע כאן. בדוק אותו לפני העתקה."></textarea>
  <button class="btn hidden" id="copyContext">העתק הקשר</button>
+ <p class="muted">לאחר פתיחת האתר והטענת רכיבי האפליקציה בפעם הראשונה, ניתן לנסות לעבוד גם במצב לא מקוון. זמינות ואחסון תלויים במדיניות הטלפון והדפדפן.</p>
  <p class="muted">חשוב: רכיבי תמונה, קבצים, כלי־עזר ומידע שאינו טקסט לא תמיד נכללים בקובצי ייצוא ChatGPT. אין סנכרון אוטומטי או שינוי של היסטוריית ההודעות המקורית.</p>
 </section>
 <footer>גרסה 1.0 · מקור פתוח למחקר בתוך Lambadina · הנתונים נשארים במכשיר · כל פעולה ביוזמת המשתמש</footer>
