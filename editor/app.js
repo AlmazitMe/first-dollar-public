@@ -299,6 +299,30 @@
    $('copyContext').classList.remove('hidden');$('contextBox').scrollIntoView({behavior:'smooth',block:'center'});
    tell('הוכן טקסט. חובה לבדוק פרטיות ודיוק לפני הדבקה ב־ChatGPT.');
  }
+ function auditManager(){
+   if(mode==='full')state.messages=decodeText($('fullEditor').value);
+   const manager=state.messages.filter(m=>m.role==='assistant').map(m=>m.text);
+   const claims=manager.filter(s=>/(אומת|הוכח|בוצע|הצלחה|הכנסה|רווח|התחבר|הושלם)/.test(s));
+   const evidence=manager.filter(s=>/(https:\/\/|מקור|ראיה|יומן הרצה|מסמך אימות|מספר עסקה)/.test(s));
+   const limits=manager.filter(s=>/(טרם|לא אומת|לא הוכח|מגבלה|עדיין|נדרש לבדוק)/.test(s));
+   const total=manager.length;
+   $('contextBox').value=[
+     'Lambadina — מבקר צמוד למנהל־העל (ניתוח טקסט תפעולי בלבד)',
+     'הודעות מנהל שנותחו: '+total,
+     'הודעות המכילות טענת הצלחה או כסף: '+claims.length,
+     'הודעות המזכירות מקור או ראיה: '+evidence.length,
+     'הודעות המכירות במגבלות ובאי־ודאות: '+limits.length,
+     '',
+     'טענות לביקורת אנושית ולאימות חיצוני:',
+     ...claims.slice(0,6).map((s,i)=>(i+1)+'. '+s.slice(0,260)),
+     '',
+     'אין להסיק שמקור המוזכר בתשובה אכן מאמת אותה ללא בדיקה.',
+     'המבקר אינו מודל פסיכולוגי, אינו לומד ממכירות, ואינו בודק נתוני תשלום.'
+   ].join('\n');
+   $('contextBox').classList.remove('hidden');$('copyContext').classList.remove('hidden');
+   $('contextBox').scrollIntoView({behavior:'smooth',block:'center'});
+   tell('נוצר דוח ביקורת מקומי על הודעות המנהל בלבד.');
+ }
  function findReplace(){
    const search=$('search').value,replacement=$('replace').value;
    if(!search){tell('יש לכתוב מונח לחיפוש',true);return}
@@ -505,6 +529,7 @@
    });
    bind('snapshot',()=>{if(mode==='full')state.messages=decodeText($('fullEditor').value);snapshot()});
    bind('replaceAll',findReplace);bind('restore',restore);bind('compare',compare);
+   bind('auditManager',auditManager);
    bind('unlock',unlock);bind('lock',lock);
    bind('verifyDb',verifyDb);bind('requestPersist',requestPersistence);
    bind('clear',async()=>{
