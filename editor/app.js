@@ -14,6 +14,7 @@
  let encryptedBackup=null;
  let key=null, salt=null;
  let mode='full', timer=null, noticeTimer=null, currentSearch='';
+ let saveQueue=Promise.resolve();
  const enc=new TextEncoder(), dec=new TextDecoder();
  function token(){return 'm'+Math.random().toString(36).slice(2,12)}
  function clone(obj){return JSON.parse(JSON.stringify(obj))}
@@ -121,29 +122,29 @@
      request.onerror=()=>reject(request.error);
    });
  }
- async function idbGet(){
+ async function idbGet(recordKey=RECORD){
    const db=await openDatabase();
    return new Promise((resolve,reject)=>{
-     const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(RECORD);
+     const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(recordKey);
      req.onsuccess=()=>resolve(req.result||null);
      req.onerror=()=>reject(req.error);
      tx.oncomplete=()=>db.close();
    });
  }
- async function idbPut(value){
+ async function idbPut(value,recordKey=RECORD){
    const db=await openDatabase();
    return new Promise((resolve,reject)=>{
      const tx=db.transaction(STORE,'readwrite');
-     tx.objectStore(STORE).put(value,RECORD);
+     tx.objectStore(STORE).put(value,recordKey);
      tx.oncomplete=()=>{db.close();resolve()};
      tx.onerror=()=>reject(tx.error);
      tx.onabort=()=>reject(tx.error||new Error('storage aborted'));
    });
  }
- async function idbDelete(){
+ async function idbDelete(recordKey=RECORD){
    const db=await openDatabase();
    return new Promise((resolve,reject)=>{
-     const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(RECORD);
+     const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(recordKey);
      tx.oncomplete=()=>{db.close();resolve()};
      tx.onerror=()=>reject(tx.error);
    });
@@ -176,8 +177,66 @@
  }
  async function saveEncrypted(){
    if(!key||!salt)return;
-   await idbPut(await seal(state,key,salt));
-   $('lockIndicator').textContent='מוצפן · נשמר במכשיר';
+   const snapshot=clone(state),activeKey=key,activeSalt=salt;
+   const operation=saveQueue.then(async()=>{
+     await idbPut(await seal(snapshot,activeKey,activeSalt));
+     $('lockIndicator').textContent='מוצפן · נשמר במכשיר';
+     $('lastSave').textContent=new Date().toLocaleTimeString('he-IL');
+     $('dbStatus').textContent='נמצא עותק מוצפן';
+   });
+   saveQueue=operation.catch(()=>{});
+   return operation;
+ }
+ async function decryptWithActiveKey(envelope){
+   if(!key||!envelope)throw new Error('פתח את הכספת תחילה');
+   if(envelope.format!=='LMB-ENCRYPTED-EDITOR-v1')throw new Error('פורמט נתונים לא תקין');
+   const buf=await crypto.subtle.decrypt({name:'AES-GCM',iv:from64(envelope.iv)},key,from64(envelope.ciphertext));
+   return JSON.parse(dec.decode(buf));
+ }
+ async function updateStorageInfo(){
+   try{
+     const envelope=await idbGet();
+     $('dbStatus').textContent=envelope?'נמצא עותק מוצפן':'אין עדיין עותק';
+     if(navigator.storage&&navigator.storage.estimate){
+       const usage=await navigator.storage.estimate();
+       $('storageUsage').textContent=Math.round((usage.usage||0)/1024)+' KB';
+     }
+     if(navigator.storage&&navigator.storage.persisted)
+       $('storageStatus').textContent=(await navigator.storage.persisted())?'שמירה מועדפת אושרה':'אין התחייבות לשמירה';
+     else $('storageStatus').textContent='הדפדפן אינו מדווח';
+   }catch(e){
+     $('dbStatus').textContent='שגיאת מסד נתונים: '+e.message;
+   }
+ }
+ async function requestPersistence(){
+   if(!navigator.storage||!navigator.storage.persist)throw new Error('הדפדפן לא תומך בבקשה לשמירה מועדפת');
+   const ok=await navigator.storage.persist();
+   await updateStorageInfo();
+   tell(ok?'שמירה מועדפת אושרה. היא אינה מחליפה גיבוי.':'שמירה מועדפת לא אושרה. ייצא גיבוי מוצפן.',!ok);
+ }
+ async function verifyDb(){
+   if(!key||!salt)throw new Error('פתח כספת מקומית לפני הבדיקה');
+   if(mode==='full')state.messages=decodeText($('fullEditor').value);
+   clearTimeout(timer);await saveEncrypted();await saveQueue;
+   const found=await idbGet('db-canary');
+   if(found){
+     const canary=await decryptWithActiveKey(found);
+     if(canary.test!=='LAMBADINA_REOPEN_V1'||!canary.nonce)
+       throw new Error('רשומת הבדיקה אינה תקינה');
+     const main=await decryptWithActiveKey(await idbGet());
+     if(JSON.stringify(main.messages)!==JSON.stringify(state.messages))
+       throw new Error('השחזור אינו תואם לעותק העבודה');
+     await idbDelete('db-canary');
+     $('dbStatus').textContent='✅ שחזור אחרי פתיחה מחדש עבר';
+     tell('בדיקת שחזור עברה לאחר פתיחת הכספת. מומלץ גיבוי מוצפן מחוץ לטלפון.');
+   }else{
+     const payload={test:'LAMBADINA_REOPEN_V1',nonce:b64(crypto.getRandomValues(new Uint8Array(24)))};
+     await idbPut(await seal(payload,key,salt),'db-canary');
+     const verification=await decryptWithActiveKey(await idbGet('db-canary'));
+     if(verification.nonce!==payload.nonce)throw new Error('בדיקת כתיבה/קריאה נכשלה');
+     $('dbStatus').textContent='✅ קריאה וכתיבה עברו; נדרש רענון ושחזור';
+     tell('שלב ראשון עבר. רענן את הדף, פתח כספת עם הסיסמה ולחץ שוב על בדיקת מסד הנתונים.');
+   }
  }
  async function unlock(){
    const password=$('passphrase').value;
@@ -193,8 +252,10 @@
    }
    $('passphrase').value='';showFull();tell('הכספת המקומית מוצפנת ופתוחה במכשיר זה');
  }
- function lock(){
-   clearTimeout(timer);if(key)saveEncrypted().catch(()=>{});
+ async function lock(){
+   clearTimeout(timer);
+   if(key)await saveEncrypted();
+   await saveQueue;
    key=null;salt=null;
    state={title:'Lambadina — מחקר חי',messages:[],versions:[],source:'manual'};
    showFull();tell('העותק בזיכרון ננעל. כדי לפתוח, הזן את הסיסמה.');
@@ -445,6 +506,7 @@
    bind('snapshot',()=>{if(mode==='full')state.messages=decodeText($('fullEditor').value);snapshot()});
    bind('replaceAll',findReplace);bind('restore',restore);bind('compare',compare);
    bind('unlock',unlock);bind('lock',lock);
+   bind('verifyDb',verifyDb);bind('requestPersist',requestPersistence);
    bind('clear',async()=>{
      if(!confirm('למחוק את עותק הכספת המוצפן שמאוחסן בדפדפן זה? הפעולה לא מוחקת גיבויים שהורדת.'))return;
      await idbDelete();lock();tell('העותק המקומי המוצפן נמחק מהאחסון של הדפדפן.');
@@ -481,7 +543,7 @@
      const count=state.messages.reduce((s,m)=>s+(m.text.split(currentSearch).length-1),0);
      $('dirty').textContent=count+' התאמות בטקסט';
    });
-   stats();showFull();
+   stats();showFull();updateStorageInfo();
    idbGet().then(record=>{
      if(record)tell('נמצאה כספת מוצפנת במכשיר. הזן סיסמה כדי לפתוח אותה.');
    }).catch(()=>tell('שמירה מוצפנת אינה זמינה בדפדפן זה. ייצא גיבוי לקובץ.',true));
