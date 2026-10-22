@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; object-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Lambadina | מעבדת שיחה חופשית</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="app.js"></script>
+</head>
+<body>
+<header class="top">
+ <div class="brand"><div class="mark">L</div><div><strong>Lambadina</strong><small>מעבדת השיחה החופשית · גרסת מחקר מקומית</small></div></div>
+ <div class="status"><span id="lockIndicator">לא נעול · עבודה בזיכרון בלבד</span><span class="dot"></span></div>
+</header>
+<main>
+<section class="intro">
+ <p class="eyebrow">מעל מגבלת ההודעות</p>
+ <h1>השיחה הופכת למסמך חי.</h1>
+ <p>עריכה חופשית של כל תמליל, מיון, החלפה גורפת, גרסאות והשוואה — ללא העלאה לשרת. מקור השיחה ב־ChatGPT אינו משתנה.</p>
+ <div class="privacy">🔒 הקבצים שלך נקראים בדפדפן בלבד. אין בקוד קריאות רשת, פרסומות או שירותי ניתוח. שמירה מקומית מתמשכת זמינה רק עם הצפנה וסיסמת פתיחה.</div>
+</section>
+<section class="toolbar" aria-label="פעולות ראשיות">
+ <label class="btn primary" for="importFile">ייבוא שיחה / ZIP / JSON / TXT</label><input type="file" id="importFile" accept=".zip,.json,.txt,.md,.lmb" hidden>
+ <button id="demo" class="btn">הדגמה ללא מידע אישי</button>
+ <button id="add" class="btn">+ הודעה</button>
+ <button id="view" class="btn">תצוגת כרטיסים</button>
+ <button id="snapshot" class="btn">שמירת גרסה</button>
+ <button id="compare" class="btn">השוואת גרסאות</button>
+</section>
+<section class="layout">
+ <aside class="panel side">
+   <h2>המחקר במבט אחד</h2>
+   <div class="stat"><span>שיחה פעילה</span><strong id="titleLabel">טרם נטענה</strong></div>
+   <div class="stat"><span>הודעות טקסט</span><strong id="msgCount">0</strong></div>
+   <div class="stat"><span>מילים</span><strong id="wordCount">0</strong></div>
+   <div class="stat"><span>גרסאות מקומיות</span><strong id="versionCount">0</strong></div>
+   <div class="field"><label for="search">איתור בכל הטקסט</label><input id="search" placeholder="מונח לחיפוש"></div>
+   <div class="field"><label for="replace">החלפה גורפת</label><input id="replace" placeholder="טקסט חדש"><button class="btn full" id="replaceAll">החלף בכל התמליל</button></div>
+   <div class="field"><label for="snapshots">גרסאות</label><select id="snapshots"><option>אין גרסאות</option></select><button class="btn full" id="restore">שחזר גרסה נבחרת</button></div>
+   <hr>
+   <h2>כספת מקומית</h2>
+   <p class="muted">הסיסמה אינה נשלחת או נשמרת. סיסמה שאבדה לא ניתנת לשחזור מתוך הקובץ המוצפן.</p>
+   <div class="field"><label for="passphrase">סיסמת הצפנה (לפחות 12 תווים)</label><input id="passphrase" type="password" autocomplete="off" placeholder="בחר סיסמה ייחודית"></div>
+   <button class="btn full" id="unlock">הפעל / פתח שמירה מוצפנת</button>
+   <button class="btn full" id="lock">נעל את המסמך</button>
+   <button class="btn full danger" id="clear">מחק עותק מקומי מוצפן</button>
+ </aside>
+ <section class="panel editor-panel">
+  <div class="editor-header"><h2 id="editorTitle">מרחב עריכה חופשי</h2><span id="dirty" class="muted">ללא שינויים</span></div>
+  <div id="conversationPicker" class="picker hidden"><label for="conversationSelect">בחר שיחה לטעינה מתוך הייצוא</label><select id="conversationSelect"></select><button class="btn primary" id="loadConversation">טען את השיחה הנבחרת</button><p class="muted">רק השיחה שתבחר תועתק לסביבת העבודה; אין צורך להעלות את קובץ הייצוא לכאן לצ'אט.</p></div>
+  <div id="cards" class="cards hidden"></div>
+  <textarea id="fullEditor" dir="auto" spellcheck="true" placeholder="כל הטקסט כאן ניתן לעריכה — הדבק שיחה, מחק, הוסף ושכתב. ניתן גם לייבא ייצוא מלא של ChatGPT."></textarea>
+  <div class="help">בתצוגת טקסט מלא, הכותרות ⟦LMB|role|id⟧ מאפשרות להחזיר את התמליל לכרטיסי הודעות. מותר לערוך גם אותן; בהסרתן יישמר הטקסט כיחידה חופשית.</div>
+ </section>
+</section>
+<section class="panel output">
+ <div class="output-head"><div><h2>ייצוא ושליטה בהקשר</h2><p>העתק בחזרה לשיחה רק קטע שאישרת. הקבצים שומרים עותק מחוץ לבועות השיחה המקוריות.</p></div></div>
+ <div class="toolbar">
+   <button class="btn primary" id="exportMarkdown">ייצא טקסט ערוך (Markdown)</button>
+   <button class="btn" id="exportJSON">ייצא מחקר וגרסאות (JSON)</button>
+   <button class="btn" id="encryptedExport">ייצוא כספת מוצפנת</button>
+   <button class="btn" id="context">הכן הקשר להמשך ב־ChatGPT</button>
+ </div>
+ <textarea id="contextBox" class="hidden" readonly placeholder="ההקשר שהוכן יופיע כאן. בדוק אותו לפני העתקה."></textarea>
+ <button class="btn hidden" id="copyContext">העתק הקשר</button>
+ <p class="muted">חשוב: רכיבי תמונה, קבצים, כלי־עזר ומידע שאינו טקסט לא תמיד נכללים בקובצי ייצוא ChatGPT. אין סנכרון אוטומטי או שינוי של היסטוריית ההודעות המקורית.</p>
+</section>
+<footer>גרסה 1.0 · מקור פתוח למחקר בתוך Lambadina · הנתונים נשארים במכשיר · כל פעולה ביוזמת המשתמש</footer>
+</main>
+<div id="notice" role="status" aria-live="polite" class="notice hidden"></div>
+</body></html>
